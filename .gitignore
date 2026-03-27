@@ -2,4 +2,7 @@ venv/
 __pycache__/
 temp_uploads/
 *.pyc
-.env
+.envtemp_uploads/
+venv/
+__pycache__/
+*.pyc
