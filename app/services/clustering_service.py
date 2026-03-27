@@ -1,25 +1,16 @@
-from sklearn.cluster import DBSCAN
 import numpy as np
-from sentence_transformers import SentenceTransformer
-
-# Load model once
-model = SentenceTransformer('all-MiniLM-L6-v2')
+from sklearn.cluster import DBSCAN
+from app.services.model_singleton import get_embeddings_batch
 
 
 def cluster_files(files, eps=0.3, min_samples=2):
-    
-    # Step 1: Generate embeddings
-    embeddings = []
-    file_paths = []
 
-    for file in files:
-        emb = model.encode(file["clean_code"])
-        embeddings.append(emb)
-        file_paths.append(file["file_path"])
+    codes = [f["clean_code"] for f in files]
+    file_paths = [f["file_path"] for f in files]
 
-    embeddings = np.array(embeddings)
+    # ✅ Single batch API call instead of loading a local model
+    embeddings = np.array(get_embeddings_batch(codes))
 
-    # Step 2: Apply DBSCAN
     clustering = DBSCAN(
         eps=eps,
         min_samples=min_samples,
@@ -28,25 +19,21 @@ def cluster_files(files, eps=0.3, min_samples=2):
 
     labels = clustering.labels_
 
-    # Step 3: Group into clusters
-    clusters = {}
-
+    cluster_map = {}
     for idx, label in enumerate(labels):
         if label == -1:
-            continue  # noise
+            continue
+        label = int(label)
+        if label not in cluster_map:
+            cluster_map[label] = []
+        cluster_map[label].append(file_paths[idx])
 
-        if label not in clusters:
-            clusters[label] = []
-
-        clusters[label].append(file_paths[idx])
-
-    # Convert to list format
     result = []
-    for cluster_id, files in clusters.items():
+    for cluster_id, file_list in cluster_map.items():
         result.append({
             "cluster_id": cluster_id,
-            "files": files,
-            "size": len(files)
+            "files": file_list,
+            "size": int(len(file_list))
         })
 
     return result

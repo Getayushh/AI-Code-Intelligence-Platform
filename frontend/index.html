@@ -1,36 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Code Intelligence</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>AI Code Intelligence Platform 🚀</h1>
+<div class="header">
+    <h1>🚀 AI Code Intelligence Platform</h1>
+    <p class="subtitle">Upload a ZIP of your Python codebase to detect clones, clusters &amp; quality insights</p>
+</div>
 
-<input type="file" id="fileInput" />
-<button onclick="uploadFile()">Analyze</button>
+<div class="container">
 
-<pre id="output"></pre>
+    <div class="upload-box">
+        <!-- ✅ FIX: Restrict input to .zip files only -->
+        <input type="file" id="fileInput" accept=".zip" />
+        <button onclick="uploadFile()">⚡ Analyze Codebase</button>
+        <p id="file-name-label" class="file-label">No file selected</p>
+    </div>
 
-<script>
-async function uploadFile() {
-    const fileInput = document.getElementById("fileInput");
-    const file = fileInput.files[0];
+    <div id="error-box" class="error-box" style="display:none;"></div>
 
-    const formData = new FormData();
-    formData.append("file", file);
+    <div id="loading" style="display:none;" class="loading">
+        <div class="spinner"></div>
+        <span>Analyzing your codebase... this may take a moment</span>
+    </div>
 
-    const response = await fetch("http://127.0.0.1:8000/analyze", {
-        method: "POST",
-        body: formData
-    });
+    <div id="dashboard" style="display:none;">
 
-    const data = await response.json();
+        <h2>📊 Summary</h2>
+        <div id="summary"></div>
 
-    document.getElementById("output").textContent =
-        JSON.stringify(data, null, 2);
-}
-</script>
+        <h2>🔍 Clone Detection</h2>
+        <div id="clones"></div>
+
+        <h2>📁 Clusters</h2>
+        <div id="clusters"></div>
+
+        <h2>💡 Insights &amp; Suggestions</h2>
+        <div id="insights"></div>
+
+    </div>
+</div>
+
+<script src="script.js"></script>
 
 </body>
 </html>
