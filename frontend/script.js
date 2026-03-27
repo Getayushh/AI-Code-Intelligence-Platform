@@ -30,7 +30,7 @@ async function uploadFile() {
     try {
         const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
         ? "http://127.0.0.1:8000"
-        : "https://YOUR_HF_USERNAME-ai-code-intelligence.hf.space";
+        : "https://ayushh4-codeclone.hf.space";
 
 const response = await fetch(`${API_BASE}/analyze`, {
             method: "POST",
