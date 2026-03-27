@@ -28,7 +28,11 @@ async function uploadFile() {
     formData.append("file", file);
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/analyze", {
+        const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://127.0.0.1:8000"
+        : "https://YOUR_HF_USERNAME-ai-code-intelligence.hf.space";
+
+const response = await fetch(`${API_BASE}/analyze`, {
             method: "POST",
             body: formData
         });
