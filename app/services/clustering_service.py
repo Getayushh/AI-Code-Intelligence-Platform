@@ -1,16 +1,18 @@
 import numpy as np
 from sklearn.cluster import DBSCAN
-from app.services.model_singleton import get_embeddings_batch
 
 
-def cluster_files(files, eps=0.3, min_samples=2):
+
+def cluster_files(files,embeddings, eps=0.15, min_samples=2):
 
     codes = [f["clean_code"] for f in files]
     file_paths = [f["file_path"] for f in files]
 
     # ✅ Single batch API call instead of loading a local model
-    embeddings = np.array(get_embeddings_batch(codes))
-
+    embeddings = np.array(embeddings)
+    if not np.any(embeddings):
+        return []
+    
     clustering = DBSCAN(
         eps=eps,
         min_samples=min_samples,

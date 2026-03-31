@@ -7,7 +7,7 @@ Normalizes identifiers/literals and compares token sequences.
 def normalize_tokens(tokens: list) -> list:
     """Replace variable names and string/number literals with placeholders."""
     normalized = []
-    import tokenize
+    import re
 
     NAME_PLACEHOLDER = "VAR"
     STRING_PLACEHOLDER = "STR"
@@ -28,7 +28,8 @@ def normalize_tokens(tokens: list) -> list:
             normalized.append(tok)
         elif tok.startswith(("'", '"')):
             normalized.append(STRING_PLACEHOLDER)
-        elif tok.replace(".", "").replace("_", "").isdigit():
+        elif re.fullmatch(r'[\d.]+', tok):
+
             normalized.append(NUMBER_PLACEHOLDER)
         elif tok.isidentifier() and tok not in keywords:
             normalized.append(NAME_PLACEHOLDER)
@@ -58,19 +59,19 @@ def token_similarity(tokens_a: list, tokens_b: list) -> float:
     return len(intersection) / len(union)
 
 
-def detect_type2_clones(files: list, threshold: float = 0.85) -> list:
+def detect_type2_clones(files: list, threshold: float = 0.97) -> list:
     clones = []
     n = len(files)
-
     normalized = [normalize_tokens(f["tokens"]) for f in files]
 
     for i in range(n):
         for j in range(i + 1, n):
             sim = token_similarity(normalized[i], normalized[j])
             if sim >= threshold:
-                clones.append([
-                    files[i]["file_path"],
-                    files[j]["file_path"]
-                ])
+                clones.append({
+                    "file1": files[i]["file_path"],
+                    "file2": files[j]["file_path"],
+                    "similarity": round(sim * 100, 1)
+                })
 
     return clones

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — CodeIntel</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    #uploadSection { margin-bottom: 32px; scroll-margin-top: 80px; }
+    .upload-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .upload-row .upload-zone { flex: 1; min-width: 280px; }
+    .upload-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; min-width: 180px; }
+
+    #resultsSection { animation: fadeUp 0.4s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+    .type1-dot { background: var(--red); }
+    .type2-dot { background: var(--amber); }
+    .type3-dot { background: var(--accent2); }
+    .type4-dot { background: var(--accent); }
+    .type1-count { background: rgba(248,113,113,0.10); color: var(--red); }
+    .type2-count { background: rgba(251,191,36,0.10);  color: var(--amber); }
+    .type3-count { background: rgba(124,92,246,0.10);  color: var(--accent2); }
+    .type4-count { background: rgba(79,126,247,0.10);  color: var(--accent); }
+
+    .section-block { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+    .results-section { scroll-margin-top: 80px; }
+
+    .charts-row { display: grid; grid-template-columns: 210px 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
+    .donut-wrap { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .donut-wrap canvas { max-width: 130px; max-height: 130px; }
+    .donut-legend { width: 100%; display: flex; flex-direction: column; gap: 7px; }
+    .donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted2); }
+    .donut-legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+    .donut-legend-val { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 12px; font-weight: 600; }
+    .bar-chart-wrap { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; display: flex; align-items: center; }
+    .bar-chart-wrap canvas { max-height: 160px; width: 100%; }
+
+    .insights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .insights-col-label { font-size: 11px; color: var(--muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+    .insights-list { display: flex; flex-direction: column; gap: 8px; }
+    .cluster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">⚡</div>
+    Code<span>Intel</span>
+  </a>
+  <div class="nav-links">
+    <span id="navUserEmail" style="font-size:12px;color:var(--muted2);font-family:'JetBrains Mono',monospace"></span>
+    <button class="btn-nav" style="background:rgba(248,113,113,0.12);color:var(--red);border:1px solid rgba(248,113,113,0.15)" onclick="handleLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="dash-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Navigation</div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-item" id="nav-upload"    onclick="scrollToSection('uploadSection')">
+        <svg viewBox="0 0 15 15" fill="none"><path d="M7.5 11V3m0 0L4.5 6m3-3L10.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Upload & Analyze
+      </button>
+      <button class="sidebar-item" id="nav-summary"   onclick="scrollToSection('summarySection')">
+        <svg viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
+        Summary
+      </button>
+      <button class="sidebar-item" id="nav-clones"    onclick="scrollToSection('clonesSection')">
+        <svg viewBox="0 0 15 15" fill="none"><circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.3"/><circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.3"/></svg>
+        Clone Detection
+      </button>
+      <button class="sidebar-item" id="nav-clusters"  onclick="scrollToSection('clustersSection')">
+        <svg viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"/><circle cx="2.5" cy="3" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="12.5" cy="3" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="2.5" cy="12" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="12.5" cy="12" r="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 3.5l2.5 3M11 3.5l-2.5 3M4 11.5l2.5-3M11 11.5l-2.5-3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+        Clusters
+      </button>
+      <button class="sidebar-item" id="nav-insights"  onclick="scrollToSection('insightsSection')">
+        <svg viewBox="0 0 15 15" fill="none"><path d="M7.5 1C4 1 1 4 1 7.5c0 2.5 1.4 4.7 3.5 5.8v1.2a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5v-1.2C12.6 12.2 14 10 14 7.5 14 4 11 1 7.5 1z" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Insights
+      </button>
+    </nav>
+
+    <div class="sidebar-section-label" style="margin-top:16px">Recent</div>
+    <div id="sidebarHistory"></div>
+
+    <div class="sidebar-user">
+      <div class="user-chip">
+        <div class="user-avatar" id="sidebarAvatar">?</div>
+        <div style="min-width:0">
+          <div class="user-name" id="sidebarName">—</div>
+          <div class="user-email" id="sidebarEmail">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub" id="lastAnalyzedLabel">Upload a ZIP to get started</div>
+      </div>
+      <div class="page-actions" id="exportActions" style="display:none">
+        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇ Export JSON</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportPDF()">⬇ Export PDF</button>
+      </div>
+    </div>
+
+    <!-- UPLOAD -->
+    <section id="uploadSection">
+      <div class="upload-row">
+        <div class="upload-zone" id="dropZone" onclick="handleDropClick()">
+          <div class="upload-icon">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M11 15V4m0 0L7 8m4-4l4 4" stroke="#4f7ef7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3 15v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="upload-title">Drop your ZIP file here</div>
+          <div class="upload-sub">or <span onclick="event.stopPropagation();document.getElementById('fileInput').click()">browse files</span> · Python repos only</div>
+          <input type="file" id="fileInput" accept=".zip" style="display:none">
+          <div class="file-chip" id="fileChip" style="display:none">
+            <span>📦</span><span id="fileChipName"></span>
+            <span style="color:var(--muted)" id="fileChipSize"></span>
+            <span style="cursor:pointer;color:var(--muted);margin-left:4px" onclick="clearFile(event)">✕</span>
+          </div>
+        </div>
+        <div class="upload-actions">
+          <button class="btn btn-primary" id="analyzeBtn" disabled onclick="analyzeCode()">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="white" stroke-width="1.5"/><path d="M5 7.5l2 2 3-3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Analyze Codebase
+          </button>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">Python repos only.<br>Takes ~15–30s.</div>
+        </div>
+      </div>
+      <div class="error-msg" id="analyzeError"></div>
+    </section>
+
+    <!-- NO RESULT -->
+    <div class="no-result" id="noResultPlaceholder">
+      <div class="no-result-icon">📁</div>
+      <div class="no-result-title">No analysis yet</div>
+      <div class="no-result-sub">Upload a ZIP file of your Python codebase and click Analyze.</div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="resultsSection" style="display:none">
+
+      <!-- 1. SUMMARY -->
+      <section id="summarySection" class="results-section">
+        <div class="section-block">
+          <div class="section-title">
+            <div class="section-dot" style="background:var(--accent)"></div>
+            Summary
+          </div>
+          <div class="stat-grid" id="statGrid"></div>
+          <div class="charts-row">
+            <div class="donut-wrap">
+              <canvas id="donutChart"></canvas>
+              <div class="donut-legend" id="donutLegend"></div>
+            </div>
+            <div class="bar-chart-wrap">
+              <canvas id="barChart"></canvas>
+            </div>
+          </div>
+          <div class="summary-summary" id="summaryText"></div>
+        </div>
+      </section>
+
+      <!-- 2. CLONE DETECTION -->
+      <section id="clonesSection" class="results-section">
+        <div class="section-block">
+          <div class="section-title">
+            <div class="section-dot" style="background:var(--accent2)"></div>
+            Clone Detection
+            <span class="badge badge-purple" id="totalClonesBadge">0 pairs</span>
+          </div>
+          <div class="accordion" id="cloneAccordion">
+            <div class="accordion-item" id="acc1">
+              <div class="accordion-header">
+                <div class="accordion-title"><div class="section-dot type1-dot"></div>Type 1 — Exact Match<span class="accordion-count type1-count" id="count1">0</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="accordion-body"><div class="accordion-body-inner" id="pairs1"></div></div>
+            </div>
+            <div class="accordion-item" id="acc2">
+              <div class="accordion-header">
+                <div class="accordion-title"><div class="section-dot type2-dot"></div>Type 2 — Token-Based<span class="accordion-count type2-count" id="count2">0</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="accordion-body"><div class="accordion-body-inner" id="pairs2"></div></div>
+            </div>
+            <div class="accordion-item" id="acc3">
+              <div class="accordion-header">
+                <div class="accordion-title"><div class="section-dot type3-dot"></div>Type 3 — AST Structural<span class="accordion-count type3-count" id="count3">0</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="accordion-body"><div class="accordion-body-inner" id="pairs3"></div></div>
+            </div>
+            <div class="accordion-item" id="acc4">
+              <div class="accordion-header">
+                <div class="accordion-title"><div class="section-dot type4-dot"></div>Type 4 — Semantic<span class="accordion-count type4-count" id="count4">0</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="accordion-body"><div class="accordion-body-inner" id="pairs4"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. CLUSTERS -->
+      <section id="clustersSection" class="results-section">
+        <div class="section-block">
+          <div class="section-title">
+            <div class="section-dot" style="background:var(--green)"></div>
+            Clusters
+            <span class="badge badge-green" id="clustersBadge">0 groups</span>
+          </div>
+          <div class="cluster-grid" id="clustersGrid"></div>
+        </div>
+      </section>
+
+      <!-- 4. INSIGHTS -->
+      <section id="insightsSection" class="results-section">
+        <div class="section-block" style="margin-bottom:40px">
+          <div class="section-title">
+            <div class="section-dot" style="background:var(--amber)"></div>
+            Insights & Suggestions
+          </div>
+          <div class="insights-grid">
+            <div>
+              <div class="insights-col-label">Insights</div>
+              <div class="insights-list" id="insightsList"></div>
+            </div>
+            <div>
+              <div class="insights-col-label">Suggestions</div>
+              <div class="insights-list" id="suggestionsList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /resultsSection -->
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Analyzing codebase...</div>
+  <div class="loading-sub" id="loadingSub">This may take 15–30 seconds</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script type="module">
+import { onAuthChange, logout } from './firebase.js';
+import { API_BASE, showToast, showLoading, hideLoading, showError, hideError, animateCount, riskColor, riskBadgeClass, scoreColor, saveToHistory, initAccordion, formatDate } from './script.js';
+
+// ── Auth ────────────────────────────────────────────
+onAuthChange(user => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  const email = user.email || '';
+  const name  = user.displayName || email.split('@')[0];
+  document.getElementById('navUserEmail').textContent = email;
+  document.getElementById('sidebarName').textContent  = name;
+  document.getElementById('sidebarEmail').textContent = email;
+  const av = document.getElementById('sidebarAvatar');
+  if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" alt="">`;
+  else av.textContent = name.charAt(0).toUpperCase();
+});
+
+window.handleLogout = async () => { await logout(); window.location.href = 'login.html'; };
+
+// ── Sidebar active tracking ─────────────────────────
+const sectionNavMap = {
+  uploadSection:   'nav-upload',
+  summarySection:  'nav-summary',
+  clonesSection:   'nav-clones',
+  clustersSection: 'nav-clusters',
+  insightsSection: 'nav-insights',
+};
+
+function setActiveNav(id) {
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const t = document.getElementById(sectionNavMap[id]);
+  if (t) t.classList.add('active');
+}
+
+function initObserver() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActiveNav(e.target.id); });
+  }, { threshold: 0.2, rootMargin: '-60px 0px -35% 0px' });
+  Object.keys(sectionNavMap).forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el); });
+}
+
+window.scrollToSection = function(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setActiveNav(id);
+};
+
+// ── File handling ───────────────────────────────────
+let selectedFile = null;
+window.handleDropClick = () => document.getElementById('fileInput').click();
+
+document.getElementById('fileInput').addEventListener('change', function() {
+  if (this.files[0]) setFile(this.files[0]);
+});
+
+function setFile(f) {
+  if (!f.name.endsWith('.zip')) { showError('analyzeError', 'Only .zip files are supported.'); return; }
+  selectedFile = f;
+  document.getElementById('fileChipName').textContent = f.name;
+  document.getElementById('fileChipSize').textContent = (f.size/1024).toFixed(1) + ' KB';
+  document.getElementById('fileChip').style.display = 'inline-flex';
+  document.getElementById('analyzeBtn').disabled = false;
+  hideError('analyzeError');
+}
+
+window.clearFile = function(e) {
+  e.stopPropagation();
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileChip').style.display = 'none';
+  document.getElementById('analyzeBtn').disabled = true;
+};
+
+const dz = document.getElementById('dropZone');
+['dragover','dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));
+dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) setFile(f); });
+
+// ── Analyze ─────────────────────────────────────────
+window.analyzeCode = async function() {
+  if (!selectedFile) return;
+  showLoading('Analyzing codebase...', 'Uploading ZIP...');
+  hideError('analyzeError');
+  const steps = [[1500,'Extracting Python files...'],[3500,'Running clone detection...'],[7000,'Generating embeddings...'],[11000,'Computing clusters...'],[14000,'Building insights...']];
+  const timers = steps.map(([d,msg]) => setTimeout(() => { const el = document.getElementById('loadingSub'); if (el) el.textContent = msg; }, d));
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  try {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: formData });
+    } catch (netErr) {
+      timers.forEach(clearTimeout); hideLoading();
+      const errEl = document.getElementById('analyzeError');
+      errEl.innerHTML = `❌ Could not reach the server.<br><span style="color:var(--muted2);font-size:12px">Server may be waking up (cold-start). Wait 30–60s and retry.</span>`;
+      errEl.style.display = 'block';
+      const rb = document.createElement('button');
+      rb.className = 'btn btn-ghost btn-sm'; rb.style.marginTop = '10px'; rb.textContent = '↺ Retry';
+      rb.onclick = () => { rb.remove(); window.analyzeCode(); };
+      errEl.appendChild(rb); return;
+    }
+    timers.forEach(clearTimeout);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err.detail || `HTTP ${res.status}`;
+      if (res.status === 422) throw new Error('Invalid ZIP: ' + msg);
+      if (res.status === 500) throw new Error('Server error: ' + msg);
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    hideLoading();
+    const filename = selectedFile.name;
+    localStorage.setItem('ci_last_result', JSON.stringify(data));
+    localStorage.setItem('ci_last_file', filename);
+    localStorage.setItem('ci_last_time', new Date().toISOString());
+    saveToHistory(data, filename);
+    renderResults(data, filename);
+    showToast('Analysis complete ✓', 'success');
+  } catch (err) {
+    timers.forEach(clearTimeout); hideLoading();
+    showError('analyzeError', '❌ ' + err.message);
+  }
+};
+
+// ── Charts ──────────────────────────────────────────
+let donutInst = null, barInst = null;
+
+// ── Render ──────────────────────────────────────────
+function renderResults(data, filename) {
+  document.getElementById('noResultPlaceholder').style.display = 'none';
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('exportActions').style.display = 'flex';
+  document.getElementById('lastAnalyzedLabel').textContent = 'Last analyzed: ' + filename;
+  renderSummary(data);
+  renderClones(data);
+  renderClusters(data);
+  renderInsights(data);
+  renderSidebarHistory();
+  initAccordion('#cloneAccordion');
+  initObserver();
+  setActiveNav('uploadSection');
+}
+
+function renderSummary(data) {
+  const ins = data.insights || {};
+  const t1=(data.type1_clones||[]).length, t2=(data.type2_clones||[]).length,
+        t3=(data.type3_clones||[]).length, t4=(data.type4_clones||[]).length;
+  const total = t1+t2+t3+t4;
+  const risk  = ins.risk_level || '—';
+  const ratio = ins.duplication_ratio || 0;
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total Files</div><div class="stat-value" id="sv1" style="color:var(--accent)">0</div><div class="stat-sub">Python files analyzed</div></div>
+    <div class="stat-card"><div class="stat-label">Total Clones</div><div class="stat-value" id="sv2" style="color:${total>0?'var(--amber)':'var(--green)'}">0</div><div class="stat-sub">Across all 4 types</div></div>
+    <div class="stat-card"><div class="stat-label">Risk Level</div><div class="stat-value" style="font-size:18px;padding-top:6px;color:${riskColor(risk)}">${risk}</div><div class="stat-sub"><span class="badge ${riskBadgeClass(risk)}" style="font-size:10px">${risk}</span></div></div>
+    <div class="stat-card"><div class="stat-label">Duplication Ratio</div><div class="stat-value" id="sv4" style="color:var(--muted2)">0.00</div><div class="stat-sub">Files in clone pairs</div></div>
+  `;
+  animateCount(document.getElementById('sv1'), data.total_files);
+  animateCount(document.getElementById('sv2'), total);
+  animateCount(document.getElementById('sv4'), ratio, 900, true);
+  document.getElementById('summaryText').textContent = ins.summary || '';
+
+  // Donut
+  if (donutInst) donutInst.destroy();
+  const hasClones = total > 0;
+  donutInst = new Chart(document.getElementById('donutChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Type 1','Type 2','Type 3','Type 4'],
+      datasets: [{
+        data: hasClones ? [t1,t2,t3,t4] : [1,1,1,1],
+        backgroundColor: ['rgba(248,113,113,0.85)','rgba(251,191,36,0.85)','rgba(124,92,246,0.85)','rgba(79,126,247,0.85)'],
+        borderColor: 'rgba(30,41,59,1)', borderWidth: 3, hoverOffset: 4
+      }]
+    },
+    options: {
+      cutout: '66%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => hasClones ? ` ${ctx.label}: ${ctx.raw} pairs` : ' No clones' } } },
+      animation: { animateRotate: true, duration: 800 }
+    }
+  });
+
+  const legendData = [
+    { label:'Type 1 — Exact',      color:'rgba(248,113,113,0.85)', val:t1 },
+    { label:'Type 2 — Token',      color:'rgba(251,191,36,0.85)',  val:t2 },
+    { label:'Type 3 — Structural', color:'rgba(124,92,246,0.85)',  val:t3 },
+    { label:'Type 4 — Semantic',   color:'rgba(79,126,247,0.85)',  val:t4 },
+  ];
+  document.getElementById('donutLegend').innerHTML = legendData.map(d =>
+    `<div class="donut-legend-item"><span class="donut-legend-dot" style="background:${d.color}"></span><span>${d.label}</span><span class="donut-legend-val">${d.val}</span></div>`
+  ).join('');
+
+  // Bar
+  if (barInst) barInst.destroy();
+  barInst = new Chart(document.getElementById('barChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Type 1\nExact','Type 2\nToken','Type 3\nAST','Type 4\nSemantic'],
+      datasets: [{
+        label: 'Clone Pairs', data: [t1,t2,t3,t4],
+        backgroundColor: ['rgba(248,113,113,0.65)','rgba(251,191,36,0.65)','rgba(124,92,246,0.65)','rgba(79,126,247,0.65)'],
+        borderColor:     ['rgba(248,113,113,1)',   'rgba(251,191,36,1)',   'rgba(124,92,246,1)',   'rgba(79,126,247,1)'],
+        borderWidth: 1.5, borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.raw} pairs`}} },
+      scales: {
+        x: { grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#64748b',font:{size:11}} },
+        y: { beginAtZero:true, grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#64748b',font:{size:11},stepSize:1} }
+      },
+      animation: { duration: 700 }
+    }
+  });
+}
+
+function renderClones(data) {
+  const types = [
+    {n:1,id:'count1',pairsId:'pairs1',dotClass:'type1-dot',clones:data.type1_clones||[]},
+    {n:2,id:'count2',pairsId:'pairs2',dotClass:'type2-dot',clones:data.type2_clones||[]},
+    {n:3,id:'count3',pairsId:'pairs3',dotClass:'type3-dot',clones:data.type3_clones||[]},
+    {n:4,id:'count4',pairsId:'pairs4',dotClass:'type4-dot',clones:data.type4_clones||[]},
+  ];
+  const total = types.reduce((s,t) => s+t.clones.length, 0);
+  document.getElementById('totalClonesBadge').textContent = total + ' pairs';
+  types.forEach(t => {
+    document.getElementById(t.id).textContent = t.clones.length;
+    const c = document.getElementById(t.pairsId);
+    if (!t.clones.length) { c.innerHTML = `<div class="pair-empty">No Type ${t.n} clones detected ✓</div>`; return; }
+    c.innerHTML = t.clones.map(pair => {
+      const f1 = pair.file1||(Array.isArray(pair)?pair[0]:'—');
+      const f2 = pair.file2||(Array.isArray(pair)?pair[1]:'—');
+      const sim = pair.similarity !== undefined ? pair.similarity : 100;
+      return `<div class="pair-row"><div class="pair-dot ${t.dotClass}"></div><div class="pair-files"><div class="pair-file">${f1}</div><div class="pair-arrow-sep">↕</div><div class="pair-file">${f2}</div></div><div class="pair-score" style="color:${scoreColor(sim)}">${Number(sim).toFixed(1)}%</div></div>`;
+    }).join('');
+  });
+}
+
+function renderClusters(data) {
+  const clusters = data.clusters || [];
+  document.getElementById('clustersBadge').textContent = clusters.length + ' groups';
+  const grid = document.getElementById('clustersGrid');
+  if (!clusters.length) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">No significant clusters found — files are sufficiently distinct ✓</div>`; return; }
+  grid.innerHTML = clusters.map((c,i) => `
+    <div class="cluster-card">
+      <div class="cluster-header"><div class="cluster-title">Cluster ${c.cluster_id??i}</div><span class="badge badge-blue">${c.size??c.files?.length??0} files</span></div>
+      <div class="cluster-files">${(c.files||[]).map(f=>`<span class="cluster-file">${f}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function renderInsights(data) {
+  const ins = data.insights || {};
+  document.getElementById('insightsList').innerHTML = (ins.insights||[]).length
+    ? ins.insights.map(i=>`<div class="insight-item"><div class="insight-dot" style="background:var(--accent)"></div><span>${i}</span></div>`).join('')
+    : `<div style="font-size:13px;color:var(--muted);padding:8px">No insights available.</div>`;
+  document.getElementById('suggestionsList').innerHTML = (ins.suggestions||[]).length
+    ? ins.suggestions.map(s=>`<div class="suggestion-item"><div class="insight-dot" style="background:var(--green)"></div><span>${s}</span></div>`).join('')
+    : `<div style="font-size:13px;color:var(--muted);padding:8px">No suggestions available.</div>`;
+}
+
+function renderSidebarHistory() {
+  const hist = JSON.parse(localStorage.getItem('ci_history')||'[]');
+  const el = document.getElementById('sidebarHistory');
+  if (!hist.length) { el.innerHTML=''; return; }
+  el.innerHTML = hist.slice(0,4).map((h,i)=>`
+    <button class="sidebar-item" onclick="loadHistory(${i})">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="flex-shrink:0"><path d="M6.5 1a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11zm0 3v3l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${h.filename}</span>
+    </button>`).join('');
+}
+
+window.loadHistory = function(i) {
+  const hist = JSON.parse(localStorage.getItem('ci_history')||'[]');
+  const h = hist[i];
+  if (!h?.data) { showToast('No data', 'error'); return; }
+  localStorage.setItem('ci_last_result', JSON.stringify(h.data));
+  localStorage.setItem('ci_last_file', h.filename);
+  renderResults(h.data, h.filename);
+  document.getElementById('lastAnalyzedLabel').textContent = 'Loaded from history: ' + h.filename;
+  showToast('Loaded from history');
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const raw = localStorage.getItem('ci_last_result');
+  if (raw) renderResults(JSON.parse(raw), localStorage.getItem('ci_last_file')||'previous analysis');
+  renderSidebarHistory();
+  setActiveNav('uploadSection');
+  initObserver();
+});
+
+window.exportJSON = function() {
+  const raw = localStorage.getItem('ci_last_result');
+  if (!raw) { showToast('No data to export','error'); return; }
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([raw],{type:'application/json'})), download: `codeintel-${Date.now()}.json` });
+  a.click(); URL.revokeObjectURL(a.href);
+  showToast('JSON downloaded');
+};
+
+window.exportPDF = function() {
+  const raw = localStorage.getItem('ci_last_result');
+  if (!raw||!window.jspdf) { showToast('PDF not ready','error'); return; }
+  const data=JSON.parse(raw), ins=data.insights||{}, {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  doc.setFillColor(15,23,42); doc.rect(0,0,210,297,'F');
+  doc.setFillColor(79,126,247); doc.rect(0,0,210,14,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('CodeIntel — Analysis Report',14,9.5);
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text(new Date().toLocaleString(),150,9.5);
+  let y=24;
+  const lbl=t=>{doc.setFontSize(8);doc.setTextColor(100,116,139);doc.setFont('helvetica','bold');doc.text(t.toUpperCase(),14,y);y+=5;};
+  const val=(t,col)=>{doc.setFontSize(10);doc.setTextColor(...(col||[226,232,240]));doc.setFont('helvetica','normal');const lines=doc.splitTextToSize(t,182);doc.text(lines,14,y);y+=lines.length*5+2;};
+  const line=()=>{doc.setDrawColor(30,41,59);doc.line(14,y,196,y);y+=6;};
+  lbl('File'); val(localStorage.getItem('ci_last_file')||'—');
+  lbl('Summary'); val(ins.summary||'—',[148,163,184]); line();
+  const t1=(data.type1_clones||[]).length,t2=(data.type2_clones||[]).length,t3=(data.type3_clones||[]).length,t4=(data.type4_clones||[]).length;
+  lbl('Overview'); val(`Files: ${data.total_files}  |  Risk: ${ins.risk_level||'—'}  |  Ratio: ${(ins.duplication_ratio||0).toFixed(2)}`);
+  val(`Clones: ${t1+t2+t3+t4}  (T1:${t1} T2:${t2} T3:${t3} T4:${t4})`); line();
+  lbl('Insights'); (ins.insights||[]).forEach(i=>val('• '+i,[148,163,184]));
+  lbl('Suggestions'); (ins.suggestions||[]).forEach(s=>val('→ '+s,[52,211,153])); line();
+  lbl('Clusters');
+  if(!(data.clusters||[]).length) val('None found.',[148,163,184]);
+  else (data.clusters||[]).forEach(c=>val(`Cluster ${c.cluster_id}: ${(c.files||[]).join(', ')}`,[148,163,184]));
+  doc.save(`codeintel-${Date.now()}.pdf`);
+  showToast('PDF downloaded');
+};
+</script>
+</body>
+</html>

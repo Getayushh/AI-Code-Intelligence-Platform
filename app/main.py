@@ -24,5 +24,6 @@ def home():
 
 
 
+#run by
 # After — excludes temp files from watching:
 # uvicorn app.main:app --reload --reload-exclude "temp_uploads"

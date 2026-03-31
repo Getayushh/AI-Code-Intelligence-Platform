@@ -1,157 +1,147 @@
-// Show selected filename
-document.getElementById("fileInput").addEventListener("change", function () {
-    const label = document.getElementById("file-name-label");
-    label.textContent = this.files[0] ? this.files[0].name : "No file selected";
-});
+// ═══════════════════════════════════════
+//   script.js — Shared Utilities
+// ═══════════════════════════════════════
 
-async function uploadFile() {
+// ── API ─────────────────────────────────
+export const API_BASE =
+  (location.hostname === 'localhost' ||
+   location.hostname === '127.0.0.1' ||
+   location.hostname === '')
+    ? 'http://127.0.0.1:8000'
+    : 'https://ayushh4-codeclone.hf.space';
 
-    const fileInput = document.getElementById("fileInput");
-    const file = fileInput.files[0];
+// ── Toast ────────────────────────────────
+let _toastTimer = null;
 
-    if (!file) {
-        showError("Please select a ZIP file first.");
-        return;
-    }
-
-    if (!file.name.endsWith(".zip")) {
-        showError("Only .zip files are supported.");
-        return;
-    }
-
-    // Reset UI
-    hideError();
-    document.getElementById("loading").style.display = "flex";
-    document.getElementById("dashboard").style.display = "none";
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-        const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-        ? "http://127.0.0.1:8000"
-        : "https://ayushh4-codeclone.hf.space";
-
-const response = await fetch(`${API_BASE}/analyze`, {
-            method: "POST",
-            body: formData
-        });
-
-        // ✅ FIX: Check HTTP status before parsing JSON
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.detail || `Server error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("API RESPONSE:", data);
-
-        renderDashboard(data);
-
-    } catch (error) {
-        // ✅ FIX: Show error in UI instead of just alert()
-        showError("❌ " + (error.message || "Unknown error. Is the backend running?"));
-    } finally {
-        document.getElementById("loading").style.display = "none";
-    }
+export function showToast(message, type = 'success') {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = message;
+  t.className = `toast ${type} show`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-
-function renderDashboard(data) {
-
-    document.getElementById("dashboard").style.display = "block";
-
-    // ✅ FIX: Guard against missing fields
-    const insights = data.insights || {};
-    const insightsList = Array.isArray(insights.insights) ? insights.insights : [];
-    const suggestionsList = Array.isArray(insights.suggestions) ? insights.suggestions : [];
-
-    // 🔹 Summary
-    document.getElementById("summary").innerHTML = `
-        <div class="card summary-card">
-            <div class="stat"><span class="stat-label">Total Files</span><span class="stat-value">${data.total_files ?? 0}</span></div>
-            <div class="stat"><span class="stat-label">Risk Level</span><span class="stat-value">${insights.risk_level ?? "N/A"}</span></div>
-            <div class="stat"><span class="stat-label">Duplication Ratio</span><span class="stat-value">${insights.duplication_ratio ?? "0.00"}</span></div>
-        </div>
+// ── Loading overlay ───────────────────────
+export function showLoading(text = 'Analyzing codebase...', sub = '') {
+  let ov = document.getElementById('loadingOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'loadingOverlay';
+    ov.className = 'loading-overlay';
+    ov.innerHTML = `
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">${text}</div>
+      <div class="loading-sub" id="loadingSub">${sub}</div>
     `;
-
-    // 🔹 Clone Detection
-    const t1 = data.type1_clones?.length ?? 0;
-    const t2 = data.type2_clones?.length ?? 0;
-    const t3 = data.type3_clones?.length ?? 0;
-    const t4 = data.type4_clones?.length ?? 0;
-
-    document.getElementById("clones").innerHTML = `
-        <div class="card clone-card">
-            <div class="clone-stat ${t1 > 0 ? "has-clones" : ""}">
-                <span>🔴 Type 1 (Exact Match)</span>
-                <span class="clone-count">${t1} pair(s)</span>
-            </div>
-            <div class="clone-stat ${t2 > 0 ? "has-clones" : ""}">
-                <span>🟠 Type 2 (Token-Based)</span>
-                <span class="clone-count">${t2} pair(s)</span>
-            </div>
-            <div class="clone-stat ${t3 > 0 ? "has-clones" : ""}">
-                <span>🟡 Type 3 (AST-Based)</span>
-                <span class="clone-count">${t3} pair(s)</span>
-            </div>
-            <div class="clone-stat ${t4 > 0 ? "has-clones" : ""}">
-                <span>🔵 Type 4 (Semantic)</span>
-                <span class="clone-count">${t4} pair(s)</span>
-            </div>
-        </div>
-    `;
-
-    // 🔹 Clusters
-    const clusters = Array.isArray(data.clusters) ? data.clusters : [];
-    if (clusters.length === 0) {
-        document.getElementById("clusters").innerHTML = `<div class="card muted">No clusters found — files are sufficiently distinct.</div>`;
-    } else {
-        let clusterHTML = "";
-        clusters.forEach(cluster => {
-            clusterHTML += `
-                <div class="card">
-                    <strong>Cluster ${cluster.cluster_id}</strong> — ${cluster.size} file(s)<br>
-                    <ul class="file-list">
-                        ${cluster.files.map(f => `<li>${f}</li>`).join("")}
-                    </ul>
-                </div>
-            `;
-        });
-        document.getElementById("clusters").innerHTML = clusterHTML;
-    }
-
-    // 🔹 Insights
-    let insightsHTML = `<div class="card">`;
-    insightsHTML += `<p class="summary-text">${insights.summary ?? ""}</p>`;
-
-    if (insightsList.length > 0) {
-        insightsHTML += `<ul class="insight-list">`;
-        insightsList.forEach(i => { insightsHTML += `<li>💬 ${i}</li>`; });
-        insightsHTML += `</ul>`;
-    }
-
-    if (suggestionsList.length > 0) {
-        insightsHTML += `<h3>✅ Suggestions</h3><ul class="insight-list suggestions">`;
-        suggestionsList.forEach(s => { insightsHTML += `<li>→ ${s}</li>`; });
-        insightsHTML += `</ul>`;
-    }
-
-    insightsHTML += `</div>`;
-    document.getElementById("insights").innerHTML = insightsHTML;
+    document.body.appendChild(ov);
+  }
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingSub').textContent = sub;
+  ov.classList.add('show');
 }
 
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function showError(message) {
-    const box = document.getElementById("error-box");
-    box.textContent = message;
-    box.style.display = "block";
+export function hideLoading() {
+  const ov = document.getElementById('loadingOverlay');
+  if (ov) ov.classList.remove('show');
 }
 
-function hideError() {
-    const box = document.getElementById("error-box");
-    box.style.display = "none";
-    box.textContent = "";
+// ── Error box ────────────────────────────
+export function showError(id, message) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message;
+  el.style.display = 'block';
+}
+
+export function hideError(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+// ── Animated counter ──────────────────────
+export function animateCount(el, target, duration = 900, isFloat = false) {
+  if (!el) return;
+  let start = 0;
+  const startTime = performance.now();
+  function step(now) {
+    const p = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const v = ease * target;
+    el.textContent = isFloat ? v.toFixed(2) : Math.floor(v);
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = isFloat ? Number(target).toFixed(2) : target;
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Risk color ───────────────────────────
+export function riskColor(riskLevel = '') {
+  const r = riskLevel.toLowerCase();
+  if (r.includes('high') || r.includes('🔴'))   return 'var(--red)';
+  if (r.includes('med')  || r.includes('🟡'))   return 'var(--amber)';
+  return 'var(--green)';
+}
+
+export function riskBadgeClass(riskLevel = '') {
+  const r = riskLevel.toLowerCase();
+  if (r.includes('high') || r.includes('🔴'))  return 'badge-red';
+  if (r.includes('med')  || r.includes('🟡'))  return 'badge-amber';
+  return 'badge-green';
+}
+
+// ── Score color ──────────────────────────
+export function scoreColor(sim) {
+  if (sim >= 95) return 'var(--red)';
+  if (sim >= 80) return 'var(--amber)';
+  return 'var(--accent)';
+}
+
+// ── History ──────────────────────────────
+export function saveToHistory(data, filename) {
+  const hist = JSON.parse(localStorage.getItem('ci_history') || '[]');
+  hist.unshift({
+    filename,
+    time: new Date().toISOString(),
+    totalFiles: data.total_files,
+    riskLevel: data.insights?.risk_level || 'Unknown',
+    data
+  });
+  if (hist.length > 20) hist.splice(20);
+  localStorage.setItem('ci_history', JSON.stringify(hist));
+}
+
+// ── Accordion helper ─────────────────────
+export function initAccordion(containerSelector) {
+  document.querySelectorAll(`${containerSelector} .accordion-header`).forEach(header => {
+    header.addEventListener('click', () => {
+      const item = header.closest('.accordion-item');
+      const body = item.querySelector('.accordion-body');
+      const isOpen = item.classList.contains('open');
+      // Close all
+      document.querySelectorAll(`${containerSelector} .accordion-item`).forEach(i => {
+        i.classList.remove('open');
+        i.querySelector('.accordion-body').style.maxHeight = null;
+      });
+      // Open clicked if it was closed
+      if (!isOpen) {
+        item.classList.add('open');
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+    });
+  });
+}
+
+// ── Format date ──────────────────────────
+export function formatDate(isoString) {
+  if (!isoString) return '—';
+  return new Date(isoString).toLocaleString(undefined, {
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
 }

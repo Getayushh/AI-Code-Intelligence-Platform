@@ -1,6 +1,4 @@
 import numpy as np
-from app.services.model_singleton import get_embeddings_batch
-
 
 def cosine_similarity(vec_a, vec_b) -> float:
     a = np.array(vec_a)
@@ -12,14 +10,11 @@ def cosine_similarity(vec_a, vec_b) -> float:
     return float(np.dot(a, b) / (norm_a * norm_b))
 
 
-def detect_type4_clones(files: list, threshold: float = 0.90) -> list:
+def detect_type4_clones(files: list, embeddings: list, threshold: float = 0.88) -> list:
     if len(files) < 2:
         return []
-
-    codes = [f["clean_code"] for f in files]
-
-    # ✅ Single batch API call instead of loading a local model
-    embeddings = get_embeddings_batch(codes)
+    if embeddings is None:
+        return []
 
     clones = []
     n = len(files)
@@ -28,9 +23,10 @@ def detect_type4_clones(files: list, threshold: float = 0.90) -> list:
         for j in range(i + 1, n):
             sim = cosine_similarity(embeddings[i], embeddings[j])
             if sim >= threshold:
-                clones.append([
-                    files[i]["file_path"],
-                    files[j]["file_path"]
-                ])
+                clones.append({
+                    "file1": files[i]["file_path"],
+                    "file2": files[j]["file_path"],
+                    "similarity": round(sim * 100, 1)
+                })
 
     return clones
